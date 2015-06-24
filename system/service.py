@@ -70,6 +70,14 @@ options:
         default: 'default'
         description:
         - "For OpenRC init scripts (ex: Gentoo) only.  The runlevel that this service belongs to."
+    daemon_reload:
+        required: false
+        choices: ["yes", "no"]
+        default: "no"
+        version_added: "2.0"
+        description:
+        - For systemd only. Whether we should execute `systemctl daemon-reload`
+          before we issue another `systemctl` command for this service
     arguments:
         description:
         - Additional arguments provided on the command line
@@ -155,6 +163,7 @@ class Service(object):
         self.pattern        = module.params['pattern']
         self.enable         = module.params['enabled']
         self.runlevel       = module.params['runlevel']
+        self.daemon_reload  = module.params['daemon_reload']
         self.changed        = False
         self.running        = None
         self.crashed        = None
@@ -873,6 +882,9 @@ class LinuxService(Service):
                 # SysV and OpenRC take the form <cmd> <name> <action>
                 svc_cmd = "%s %s" % (self.svc_cmd, self.name)
             else:
+                # Issue a `systemctl daemon-reload` if requested
+                if self.daemon_reload == "yes":
+                    self.execute_command('% daemon-reload' % self.svc_cmd)
                 # systemd commands take the form <cmd> <action> <name>
                 svc_cmd = self.svc_cmd
                 arguments = "%s %s" % (self.__systemd_unit, arguments)
